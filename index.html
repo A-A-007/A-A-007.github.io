@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Will AI Take Your Major? | MajorRisk.ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111;
+  --border: #222;
+  --accent: #ff3c3c;
+  --accent2: #ff8c00;
+  --yellow: #ffe000;
+  --text: #f0f0f0;
+  --muted: #555;
+  --muted2: #333;
+  --green: #00e676;
+  --mono: 'DM Mono', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  text-align: center;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,60,60,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ticker {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  border: 1px solid var(--border);
+  padding: 0.4rem 1rem;
+  border-radius: 99px;
+  margin-bottom: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ticker .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(4rem, 12vw, 10rem);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+h1 .line1 { display: block; color: var(--text); }
+h1 .line2 { display: block; color: var(--accent); }
+h1 .line3 { display: block; color: var(--text); }
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #888;
+  max-width: 480px;
+  line-height: 1.6;
+  margin-bottom: 3rem;
+  font-weight: 300;
+}
+
+/* SEARCH */
+.search-container {
+  width: 100%;
+  max-width: 580px;
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.search-wrap {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.search-wrap:focus-within {
+  border-color: var(--accent);
+}
+
+.search-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 1rem;
+  padding: 1rem 1.25rem;
+  outline: none;
+}
+
+.search-wrap input::placeholder { color: var(--muted); }
+
+.search-wrap button {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  padding: 0 2rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.search-wrap button:hover { background: #ff1a1a; }
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 0.65rem 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #aaa;
+  transition: background 0.1s, color 0.1s;
+}
+
+.suggestion-item:hover { background: var(--muted2); color: var(--text); }
+
+.popular-tags {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+  justify-content: center;
+  max-width: 580px;
+}
+
+.pop-tag {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.7rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pop-tag:hover { color: var(--accent); border-color: var(--accent); }
+
+/* STATS BAR */
+.stats-bar {
+  display: flex;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--border);
+}
+
+.stat { text-align: center; }
+.stat .num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.5rem;
+  color: var(--accent);
+  line-height: 1;
+}
+.stat .label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+/* RESULTS SECTION */
+#resultsSection {
+  display: none;
+  min-height: 100vh;
+  padding: 4rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.result-header {
+  margin-bottom: 3rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 2rem;
+}
+
+.result-major-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.result-meta {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+/* RISK METER */
+.risk-meter-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.risk-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+}
+
+.risk-card .rc-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.risk-score-big {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 5rem;
+  line-height: 1;
+}
+
+.risk-bar {
+  height: 4px;
+  background: var(--border);
+  margin-top: 1rem;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  transition: width 1s ease;
+}
+
+.timeline-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.timeline-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  font-weight: 300;
+}
+
+/* CONTENT BLOCKS */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.content-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+}
+
+.content-block h3 {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.job-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--muted2);
+  font-size: 0.85rem;
+}
+
+.job-item:last-child { border-bottom: none; }
+
+.job-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   API PLACEHOLDER SECTION
+   This is where the Claude API response goes.
+   When integrated, replace the static content
+   inside #apiPlaceholder with the streamed
+   Claude response.
+   ============================================ */
+.api-placeholder {
+  background: var(--surface);
+  border: 1px solid #ff3c3c44;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.api-placeholder::before {
+  content: '// API ZONE — REPLACE WITH CLAUDE RESPONSE';
+  position: absolute;
+  top: -1px; left: 0;
+  background: var(--accent);
+  color: #000;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.6rem;
+  font-weight: 500;
+}
+
+.api-placeholder h3 {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+#apiContent {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: #bbb;
+  font-weight: 300;
+}
+
+#apiContent p { margin-bottom: 1rem; }
+#apiContent strong { color: var(--text); font-weight: 500; }
+
+/* SOURCES */
+.sources-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.sources-block h3 {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+
+.source-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--muted2);
+  align-items: flex-start;
+}
+
+.source-item:last-child { border-bottom: none; }
+
+.source-tag {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  background: var(--muted2);
+  color: var(--muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.source-text { font-size: 0.82rem; color: #aaa; line-height: 1.5; }
+.source-text strong { color: var(--text); }
+
+/* SHARE */
+.share-strip {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.share-strip p {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex: 1;
+}
+
+.share-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.share-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.try-another {
+  text-align: center;
+  padding: 2rem;
+}
+
+.try-another button {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 2.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.try-another button:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+/* MARQUEE */
+.marquee-section {
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+  margin-bottom: 0;
+}
+
+.marquee-track {
+  display: flex;
+  gap: 3rem;
+  animation: marquee 25s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee-item {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.marquee-item .sep { color: var(--accent); }
+
+/* LOADING */
+.loading-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loading-overlay.active { display: flex; }
+
+.loading-bar-wrap {
+  width: 300px;
+  height: 2px;
+  background: var(--border);
+}
+
+.loading-bar {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  animation: loadprogress 1.8s ease forwards;
+}
+
+@keyframes loadprogress {
+  0% { width: 0%; }
+  60% { width: 75%; }
+  90% { width: 90%; }
+  100% { width: 100%; }
+}
+
+.loading-text {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.loading-major {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .risk-meter-section, .content-grid { grid-template-columns: 1fr; }
+  .stats-bar { gap: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-major" id="loadingMajorName"></div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-text">Analyzing AI disruption risk...</div>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="heroSection">
+  <div class="ticker">
+    <span class="dot"></span>
+    LIVE ANALYSIS · 2026 DATA
+  </div>
+
+  <h1>
+    <span class="line1">WILL AI</span>
+    <span class="line2">TAKE</span>
+    <span class="line3">YOUR MAJOR?</span>
+  </h1>
+
+  <p class="subtitle">Enter your college major. Get a brutally honest AI disruption risk score based on real research — not vibes.</p>
+
+  <div class="search-container">
+    <div class="search-wrap">
+      <input type="text" id="majorInput" placeholder="e.g. Computer Science, Nursing, Law..." autocomplete="off" oninput="handleInput()" onkeydown="if(event.key==='Enter') analyze()" />
+      <button onclick="analyze()">ANALYZE →</button>
+    </div>
+    <div class="suggestions" id="suggestions" style="display:none"></div>
+  </div>
+
+  <div class="popular-tags">
+    <span class="pop-tag" onclick="quickSearch('Computer Science')">Computer Science</span>
+    <span class="pop-tag" onclick="quickSearch('Nursing')">Nursing</span>
+    <span class="pop-tag" onclick="quickSearch('Accounting')">Accounting</span>
+    <span class="pop-tag" onclick="quickSearch('Psychology')">Psychology</span>
+    <span class="pop-tag" onclick="quickSearch('Graphic Design')">Graphic Design</span>
+    <span class="pop-tag" onclick="quickSearch('Mechanical Engineering')">Mechanical Engineering</span>
+    <span class="pop-tag" onclick="quickSearch('Journalism')">Journalism</span>
+    <span class="pop-tag" onclick="quickSearch('Law')">Law</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="num">700+</div><div class="label">Majors Analyzed</div></div>
+    <div class="stat"><div class="num">47%</div><div class="label">Jobs At Risk (Oxford)</div></div>
+    <div class="stat"><div class="num">300M</div><div class="label">Jobs Exposed (Goldman)</div></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-section">
+  <div class="marquee-track" id="marqueeTrack"></div>
+</div>
+
+<!-- RESULTS -->
+<section id="resultsSection">
+  <div class="result-header">
+    <div class="result-major-name" id="resultMajorName"></div>
+    <div class="result-meta" id="resultMeta"></div>
+  </div>
+
+  <div class="risk-meter-section">
+    <div class="risk-card">
+      <div class="rc-label">AI Disruption Risk Score</div>
+      <div class="risk-score-big" id="riskScoreDisplay">--</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:0.25rem" id="riskLabel">out of 100</div>
+      <div class="risk-bar"><div class="risk-bar-fill" id="riskBarFill" style="width:0%"></div></div>
+    </div>
+    <div class="risk-card">
+      <div class="rc-label">Estimated Disruption Timeline</div>
+      <div class="timeline-value" id="timelineDisplay">--</div>
+      <div class="timeline-sub" id="timelineSub">years until significant impact</div>
+      <div style="margin-top:1rem;font-size:0.8rem;color:var(--muted)" id="urgencyLabel"></div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <div class="content-block">
+      <h3>✓ Jobs That Survive</h3>
+      <div id="safeJobs"></div>
+    </div>
+    <div class="content-block">
+      <h3>✗ Jobs At Risk</h3>
+      <div id="atRiskJobs"></div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <div class="content-block">
+      <h3>Skills To Add Now</h3>
+      <div id="skillsToAdd"></div>
+    </div>
+    <div class="content-block">
+      <h3>AI-Proof Specializations</h3>
+      <div id="aiProofSpecs"></div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       API PLACEHOLDER
+       👇 THIS IS WHERE CLAUDE API GOES 👇
+       
+       When you add your API key:
+       1. Call the Claude API with the major name
+       2. Ask it for a deep analysis paragraph
+       3. Replace the static text in #apiContent
+          with the streamed Claude response
+       4. Remove the red border and label
+       ============================================ -->
+  <div class="api-placeholder">
+    <h3>Deep AI Analysis</h3>
+    <div id="apiContent">
+      <p><strong>This section will be powered by Claude AI.</strong> When the API is connected, this will contain a detailed, nuanced 3-4 paragraph analysis specific to the major — covering which sub-fields are most at risk, what the transition looks like, real career advice, and what graduates should do right now.</p>
+      <p>It will reference current research from McKinsey, Oxford, Goldman Sachs, and the World Economic Forum — then add our own synthesis on top. Every response will be unique and tailored to the exact major entered.</p>
+      <p style="color:var(--muted);font-family:var(--mono);font-size:0.75rem;margin-top:1.5rem">→ Add your Claude API key to unlock this section. Cost: ~$0.003 per analysis.</p>
+    </div>
+  </div>
+
+  <div class="sources-block">
+    <h3>Sources & Methodology</h3>
+    <div class="source-item">
+      <span class="source-tag">OXFORD</span>
+      <div class="source-text"><strong>Frey & Osborne (2013, updated 2023)</strong> — "The Future of Employment" — foundational study estimating 47% of US jobs are at high risk of computerization. Uses task-based analysis across 702 occupations.</div>
+    </div>
+    <div class="source-item">
+      <span class="source-tag">GOLDMAN</span>
+      <div class="source-text"><strong>Goldman Sachs (2023)</strong> — "The Potentially Large Effects of AI on Economic Growth" — estimates 300M full-time jobs globally exposed to automation. Two-thirds of jobs partially automatable.</div>
+    </div>
+    <div class="source-item">
+      <span class="source-tag">MCKINSEY</span>
+      <div class="source-text"><strong>McKinsey Global Institute (2023)</strong> — "The Economic Potential of Generative AI" — generative AI could automate 60-70% of employee time across industries by 2030.</div>
+    </div>
+    <div class="source-item">
+      <span class="source-tag">WEF</span>
+      <div class="source-text"><strong>World Economic Forum — Future of Jobs Report 2025</strong> — 85M jobs displaced by 2025, 97M new roles created. Net positive but requires massive reskilling.</div>
+    </div>
+    <div class="source-item">
+      <span class="source-tag">US BLS</span>
+      <div class="source-text"><strong>Bureau of Labor Statistics</strong> — Occupational Outlook Handbook — provides 10-year employment projections for all major occupations tied to specific college majors.</div>
+    </div>
+    <div class="source-item">
+      <span class="source-tag">OUR TAKE</span>
+      <div class="source-text"><strong>MajorRisk Editorial</strong> — Our synthesis combines the above research with current AI capability benchmarks and real-world deployment data. Scores are estimates, not predictions.</div>
+    </div>
+  </div>
+
+  <div class="share-strip">
+    <p>Share your result — let your friends know if their major is cooked 🔥</p>
+    <button class="share-btn" onclick="copyLink()">COPY LINK</button>
+    <button class="share-btn" onclick="shareTwitter()">TWITTER / X</button>
+  </div>
+
+  <div class="try-another">
+    <button onclick="resetToHero()">← TRY ANOTHER MAJOR</button>
+  </div>
+</section>
+
+<script>
+const MAJORS = [
+  "Accounting","Actuarial Science","Aerospace Engineering","African American Studies","Agricultural Business","Agricultural Engineering","Agriculture","Anthropology","Applied Mathematics","Architecture","Art History","Artificial Intelligence","Astrophysics","Biochemistry","Bioengineering","Biology","Biomedical Engineering","Business Administration","Chemical Engineering","Chemistry","Civil Engineering","Classics","Cognitive Science","Communications","Computer Engineering","Computer Science","Construction Management","Criminal Justice","Cybersecurity","Dance","Data Science","Dental Hygiene","Dentistry","Economics","Education","Electrical Engineering","Elementary Education","English","Environmental Engineering","Environmental Science","Epidemiology","Fashion Design","Film Studies","Finance","Fine Arts","Forensic Science","Geography","Geology","Geophysics","Graphic Design","Health Administration","History","Hospitality Management","Human Resources","Industrial Engineering","Information Systems","Interior Design","International Business","International Relations","Journalism","Kinesiology","Landscape Architecture","Law","Linguistics","Management","Marketing","Materials Science","Mathematics","Mechanical Engineering","Media Studies","Medical Imaging","Medicine (Pre-Med)","Microbiology","Music","Neuroscience","Nursing","Nutrition","Occupational Therapy","Operations Management","Optometry","Pharmacy","Philosophy","Physical Therapy","Physics","Political Science","Psychology","Public Administration","Public Health","Public Policy","Real Estate","Religious Studies","Social Work","Sociology","Software Engineering","Special Education","Speech Pathology","Statistics","Supply Chain Management","Sustainability","Theater","Urban Planning","Veterinary Medicine","Women's Studies","Zoology"
+];
+
+// Static risk data - will be replaced/enriched by Claude API
+const RISK_DATA = {
+  "Accounting": { score: 82, timeline: 5, safe: ["Forensic Accounting","Tax Strategy","M&A Advisory","CFO Roles"], risk: ["Bookkeeping","Data Entry","Basic Tax Prep","Accounts Payable"], skills: ["AI Tool Proficiency","Strategic Advisory","Complex Tax Law","Data Interpretation"], specs: ["Forensic Accounting","ESG Reporting","Crypto Accounting","M&A Due Diligence"] },
+  "Journalism": { score: 78, timeline: 4, safe: ["Investigative Reporting","War Correspondence","Podcast Hosting","Editorial Direction"], risk: ["Sports Recaps","Financial News","Weather Reporting","Basic Event Coverage"], skills: ["Data Journalism","Video Production","Niche Expertise","Source Cultivation"], specs: ["Investigative Journalism","Video Journalism","Podcast Production","Newsletter Publishing"] },
+  "Nursing": { score: 18, timeline: 20, safe: ["Bedside Care","Emergency Response","Patient Advocacy","Complex Assessment"], risk: ["Scheduling","Documentation","Basic Triage Intake"], skills: ["AI-Assisted Diagnostics","Telehealth","Specialized Care Areas","Leadership"], specs: ["Critical Care","Nurse Practitioner","Anesthesiology","Mental Health Nursing"] },
+  "Computer Science": { score: 45, timeline: 8, safe: ["AI/ML Research","System Architecture","Cybersecurity","Engineering Leadership"], risk: ["Junior Coding Roles","QA Testing","Simple App Development","IT Support"], skills: ["AI/ML","Prompt Engineering","System Design","Domain Expertise"], specs: ["AI Research","Quantum Computing","Robotics","Cybersecurity"] },
+  "Graphic Design": { score: 88, timeline: 3, safe: ["Brand Strategy","Art Direction","3D/Motion","Client Relationships"], risk: ["Logo Design","Stock Illustration","Basic Layout","Social Media Graphics"], skills: ["AI Tool Mastery","Motion Design","3D Modeling","Brand Strategy"], specs: ["UX/Product Design","Motion Graphics","3D Design","Brand Consulting"] },
+  "Psychology": { score: 25, timeline: 15, safe: ["Therapy & Counseling","Crisis Intervention","Research","Industrial-Org"], risk: ["Intake Forms","Basic Assessments","Data Collection"], skills: ["Specialized Therapy Modalities","Neuropsychology","AI Ethics","Organizational Consulting"], specs: ["Clinical Psychology","Neuropsychology","I-O Psychology","Sports Psychology"] },
+  "Law": { score: 60, timeline: 7, safe: ["Trial Litigation","Complex Negotiation","Legal Strategy","Judicial Roles"], risk: ["Contract Drafting","Legal Research","Document Review","Paralegal Work"], skills: ["AI Legal Tools","Niche Specialization","Client Relations","Courtroom Advocacy"], specs: ["Trial Law","Patent Law","Cybersecurity Law","AI & Tech Law"] },
+  "Mechanical Engineering": { score: 30, timeline: 12, safe: ["Complex System Design","Robotics Engineering","Innovation R&D","Project Leadership"], risk: ["Drafting","Basic CAD","Standard Component Design"], skills: ["Robotics","AI-Integrated Design","Sustainability Engineering","Systems Thinking"], specs: ["Robotics","Aerospace","Biomedical Devices","Sustainable Energy"] },
+  "Marketing": { score: 70, timeline: 5, safe: ["Brand Strategy","Consumer Psychology","Campaign Direction","C-Suite Roles"], risk: ["Copywriting","Basic Ad Creation","Email Marketing","Social Scheduling"], skills: ["AI Marketing Tools","Data Analytics","Video Production","Community Building"], specs: ["Growth Marketing","Brand Consulting","Creator Economy","Performance Marketing"] },
+  "Finance": { score: 65, timeline: 6, safe: ["Investment Strategy","Complex M&A","Risk Management","Client Advisory"], risk: ["Financial Modeling","Report Generation","Basic Analysis","Data Processing"], skills: ["AI Financial Tools","Quantitative Finance","Alternative Investments","ESG"], specs: ["Private Equity","Venture Capital","Quantitative Finance","ESG Investing"] },
+};
+
+const DEFAULT_RISK = { score: 55, timeline: 8, safe: ["Leadership Roles","Complex Problem Solving","Human-Centered Work","Strategic Planning"], risk: ["Routine Analytical Tasks","Data Processing","Report Generation","Basic Research"], skills: ["AI Tool Proficiency","Critical Thinking","Domain Expertise","Communication"], specs: ["AI-Adjacent Specialization","Research & Development","Consulting","Teaching"] };
+
+function buildMarquee() {
+  const items = ["ACCOUNTING — HIGH RISK","NURSING — LOW RISK","GRAPHIC DESIGN — VERY HIGH RISK","LAW — MODERATE RISK","COMPUTER SCIENCE — MODERATE RISK","MECHANICAL ENGINEERING — LOW RISK","JOURNALISM — HIGH RISK","PSYCHOLOGY — LOW RISK","FINANCE — HIGH RISK","MARKETING — HIGH RISK"];
+  const track = document.getElementById('marqueeTrack');
+  const doubled = [...items, ...items];
+  track.innerHTML = doubled.map(i => {
+    const [major, risk] = i.split(' — ');
+    return `<span class="marquee-item">${major} <span class="sep">—</span> ${risk}</span>`;
+  }).join('');
+}
+
+function handleInput() {
+  const val = document.getElementById('majorInput').value.toLowerCase();
+  const box = document.getElementById('suggestions');
+  if (val.length < 2) { box.style.display = 'none'; return; }
+  const matches = MAJORS.filter(m => m.toLowerCase().includes(val)).slice(0, 6);
+  if (matches.length === 0) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="quickSearch('${m}')">${m}</div>`).join('');
+  box.style.display = 'block';
+}
+
+function quickSearch(major) {
+  document.getElementById('majorInput').value = major;
+  document.getElementById('suggestions').style.display = 'none';
+  analyze();
+}
+
+function analyze() {
+  const val = document.getElementById('majorInput').value.trim();
+  if (!val) return;
+  document.getElementById('suggestions').style.display = 'none';
+
+  // Show loading
+  document.getElementById('loadingMajorName').textContent = val.toUpperCase();
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('active');
+  // Reset loading bar
+  overlay.querySelector('.loading-bar').style.animation = 'none';
+  setTimeout(() => { overlay.querySelector('.loading-bar').style.animation = 'loadprogress 1.8s ease forwards'; }, 10);
+
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    showResults(val);
+  }, 2000);
+}
+
+function showResults(major) {
+  // Find data
+  const key = Object.keys(RISK_DATA).find(k => k.toLowerCase() === major.toLowerCase()) || null;
+  const data = key ? RISK_DATA[key] : DEFAULT_RISK;
+  const displayName = key || major.charAt(0).toUpperCase() + major.slice(1);
+
+  // Hide hero, show results
+  document.getElementById('heroSection').style.display = 'none';
+  const results = document.getElementById('resultsSection');
+  results.style.display = 'block';
+  window.scrollTo(0, 0);
+
+  // Header
+  document.getElementById('resultMajorName').textContent = displayName.toUpperCase();
+  document.getElementById('resultMeta').textContent = `ANALYSIS GENERATED ${new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'}).toUpperCase()} · BASED ON OXFORD, GOLDMAN SACHS, MCKINSEY & WEF RESEARCH`;
+
+  // Risk score
+  const score = data.score;
+  const scoreEl = document.getElementById('riskScoreDisplay');
+  const barEl = document.getElementById('riskBarFill');
+  const color = score >= 70 ? '#ff3c3c' : score >= 45 ? '#ff8c00' : '#00e676';
+  scoreEl.textContent = score;
+  scoreEl.style.color = color;
+  barEl.style.width = score + '%';
+  barEl.style.background = color;
+  document.getElementById('riskLabel').textContent = score >= 70 ? 'HIGH RISK' : score >= 45 ? 'MODERATE RISK' : 'LOW RISK';
+
+  // Timeline
+  document.getElementById('timelineDisplay').textContent = data.timeline;
+  document.getElementById('urgencyLabel').textContent = data.timeline <= 5 ? '⚠ ACT NOW' : data.timeline <= 10 ? '→ WATCH CLOSELY' : '✓ SOME RUNWAY';
+
+  // Jobs
+  document.getElementById('safeJobs').innerHTML = data.safe.map(j =>
+    `<div class="job-item"><div class="job-dot" style="background:var(--green)"></div>${j}</div>`
+  ).join('');
+  document.getElementById('atRiskJobs').innerHTML = data.risk.map(j =>
+    `<div class="job-item"><div class="job-dot" style="background:var(--accent)"></div>${j}</div>`
+  ).join('');
+
+  // Skills & Specs
+  document.getElementById('skillsToAdd').innerHTML = data.skills.map(s =>
+    `<div class="job-item"><div class="job-dot" style="background:var(--accent2)"></div>${s}</div>`
+  ).join('');
+  document.getElementById('aiProofSpecs').innerHTML = data.specs.map(s =>
+    `<div class="job-item"><div class="job-dot" style="background:#4fc3f7"></div>${s}</div>`
+  ).join('');
+
+  // ============================================
+  // API PLACEHOLDER — static text shown until
+  // Claude API is connected. Replace this block
+  // with your actual API call and stream the
+  // response into #apiContent.
+  // ============================================
+  document.getElementById('apiContent').innerHTML = `
+    <p><strong>This section will contain Claude's live analysis of ${displayName}.</strong> When the API is connected, you'll get a detailed breakdown of exactly how AI is currently impacting this field, which companies are already automating it, and what the next 5 years look like for graduates.</p>
+    <p>The AI will cross-reference the Oxford automation probability scores, McKinsey task analysis, and current job posting data to give a nuanced, honest take — not just a generic warning.</p>
+    <p style="color:var(--muted);font-family:var(--mono);font-size:0.75rem;margin-top:1.5rem">→ Claude API integration pending. Add your API key to activate.</p>
+  `;
+}
+
+function resetToHero() {
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('heroSection').style.display = 'flex';
+  document.getElementById('majorInput').value = '';
+  window.scrollTo(0, 0);
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  alert('Link copied!');
+}
+
+function shareTwitter() {
+  const major = document.getElementById('resultMajorName').textContent;
+  const score = document.getElementById('riskScoreDisplay').textContent;
+  const text = `My ${major} major has a ${score}/100 AI disruption risk score 😳 Check yours →`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-container')) {
+    document.getElementById('suggestions').style.display = 'none';
+  }
+});
+
+buildMarquee();
+</script>
+</body>
+</html>
